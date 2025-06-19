@@ -4,7 +4,12 @@ let deck = [];
 
 let playerHand = [];
 let dealerHand = [];
+
 let isGameOver = false;
+let balance = 1000;
+let currentBet = 100;
+
+let isStand = false;
 
 const dealerDiv = document.getElementById('dealer-hand');
 const playerDiv = document.getElementById('player-hand');
@@ -49,14 +54,18 @@ function getHandValue(hand) {
   return value;
 }
 
-function renderHand(hand, div) {
+function renderHand(hand, div, hideSecondCard = false) {
   div.innerHTML = '';
-  for (let card of hand) {
+  hand.forEach((card, i) => {
     const cardDiv = document.createElement('div');
     cardDiv.className = 'card';
-    cardDiv.textContent = card.val + card.suit;
+    if (i === 1 && hideSecondCard && !isStand) {
+      cardDiv.textContent = '🂠';
+    } else {
+      cardDiv.textContent = card.val + card.suit;
+    }
     div.appendChild(cardDiv);
-  }
+  });
 }
 
 function hit() {
@@ -68,6 +77,7 @@ function hit() {
 
 function stand() {
   if (isGameOver) return;
+  isStand = true;
   while (getHandValue(dealerHand) < 17) {
     dealerHand.push(deck.pop());
   }
@@ -79,27 +89,42 @@ function endGame() {
   const playerScore = getHandValue(playerHand);
   const dealerScore = getHandValue(dealerHand);
   let result = '';
+  let color = '';
 
-  if (playerScore > 21) result = 'You busted! Dealer wins.';
-  else if (dealerScore > 21) result = 'Dealer busted! You win!';
-  else if (playerScore > dealerScore) result = 'You win!';
-  else if (dealerScore > playerScore) result = 'Dealer wins!';
-  else result = 'It\'s a draw!';
+  if (playerScore > 21) {
+    result = 'You busted! Dealer wins.';
+    color = 'red';
+  } else if (dealerScore > 21) {
+    result = 'Dealer busted! You win!';
+    color = 'green';
+  } else if (playerScore > dealerScore) {
+    result = 'You win!';
+    color = 'green';
+  } else if (dealerScore > playerScore) {
+    result = 'Dealer wins!';
+    color = 'red';
+  } else {
+    result = 'It\'s a draw!';
+    color = 'white';
+  }
 
   update();
   resultDiv.textContent = result;
+  resultDiv.style.color = color;
 }
 
 function update() {
   renderHand(playerHand, playerDiv);
-  renderHand(dealerHand, dealerDiv);
+  renderHand(dealerHand, dealerDiv, true);
   playerScoreDiv.textContent = 'Score: ' + getHandValue(playerHand);
-  dealerScoreDiv.textContent = 'Score: ' + getHandValue(dealerHand);
+  dealerScoreDiv.textContent = isStand ? 'Score: ' + getHandValue(dealerHand) : 'Score: ?';
 }
 
 function startGame() {
   isGameOver = false;
+  isStand = false;
   resultDiv.textContent = '';
+  resultDiv.style.color = 'white';
   createDeck();
   playerHand = [deck.pop(), deck.pop()];
   dealerHand = [deck.pop(), deck.pop()];
@@ -107,3 +132,75 @@ function startGame() {
 }
 
 startGame();
+
+
+document.getElementById('increase-bet').addEventListener('click', () => {
+  if (currentBet + 10 <= balance) {
+    currentBet += 10;
+    updateBet();
+  }
+});
+
+document.getElementById('decrease-bet').addEventListener('click', () => {
+  if (currentBet - 10 >= 10) {
+    currentBet -= 10;
+    updateBet();
+  }
+});
+
+function updateBet() {
+  document.getElementById('bet-amount').textContent = '$' + currentBet;
+  document.getElementById('balance').textContent = 'Balance: $' + balance;
+}
+
+function endGame() {
+  isGameOver = true;
+  const playerScore = getHandValue(playerHand);
+  const dealerScore = getHandValue(dealerHand);
+  let result = '';
+  let color = '';
+
+  if (playerScore > 21) {
+    result = 'You busted! Dealer wins.';
+    color = 'red';
+    balance -= currentBet;
+  } else if (dealerScore > 21) {
+    result = 'Dealer busted! You win!';
+    color = 'green';
+    balance += currentBet;
+  } else if (playerScore > dealerScore) {
+    result = 'You win!';
+    color = 'green';
+    balance += currentBet;
+  } else if (dealerScore > playerScore) {
+    result = 'Dealer wins!';
+    color = 'red';
+    balance -= currentBet;
+  } else {
+    result = 'It\'s a draw!';
+    color = 'white';
+  }
+
+  update();
+  resultDiv.textContent = result;
+  resultDiv.style.color = color;
+  updateBet();
+}
+
+function startGame() {
+  if (balance < currentBet) {
+    alert("Not enough balance to play.");
+    return;
+  }
+  isGameOver = false;
+  isStand = false;
+  resultDiv.textContent = '';
+  resultDiv.style.color = 'white';
+  createDeck();
+  playerHand = [deck.pop(), deck.pop()];
+  dealerHand = [deck.pop(), deck.pop()];
+  update();
+  updateBet();
+}
+
+updateBet();
